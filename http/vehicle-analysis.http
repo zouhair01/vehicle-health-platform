@@ -1,0 +1,2 @@
+### Health check vehicle-analysis-service
+GET http://localhost:8082/actuator/health
