@@ -1,0 +1,5 @@
+### Simulated recall provider - known vehicle (1 open + 1 closed campaign)
+GET http://localhost:8089/api/v1/recalls?vin=VF1RFB00123456789
+
+### Simulated recall provider - unknown vehicle (no campaign)
+GET http://localhost:8089/api/v1/recalls?vin=VF1AAA00000000001

@@ -1,0 +1,19 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPath": "/api/v1/recalls",
+    "queryParameters": { "vin": { "equalTo": "VF1RFB00123456789" } }
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "vin": "VF1RFB00123456789",
+      "campaigns": [
+        { "code": "RC-2026-014", "description": "Brake hose inspection", "status": "OPEN" },
+        { "code": "RC-2025-101", "description": "Software update", "status": "CLOSED" }
+      ]
+    }
+  }
+}
