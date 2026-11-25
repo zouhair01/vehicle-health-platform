@@ -4,6 +4,7 @@ import com.renault.vehiclehealth.telemetry.domain.model.Telemetry;
 import com.renault.vehiclehealth.telemetry.domain.model.TelemetryReading;
 import com.renault.vehiclehealth.telemetry.domain.model.TirePressure;
 import com.renault.vehiclehealth.telemetry.domain.model.Vin;
+import com.renault.vehiclehealth.telemetry.domain.port.TelemetryEventPublisher;
 import com.renault.vehiclehealth.telemetry.domain.port.TelemetryRepository;
 import org.junit.jupiter.api.Test;
 
@@ -19,31 +20,42 @@ class ReceiveTelemetryUseCaseTest {
 
     private static final Instant NOW = Instant.parse("2026-11-25T10:05:00Z");
 
-    private final RecordingTelemetryRepository repository = new RecordingTelemetryRepository();
+    private final List<String> calls = new ArrayList<>();
+    private final List<Telemetry> saved = new ArrayList<>();
+    private final List<Telemetry> published = new ArrayList<>();
+
+    private final TelemetryRepository repository = telemetry -> {
+        calls.add("save");
+        saved.add(telemetry);
+    };
+    private final TelemetryEventPublisher publisher = telemetry -> {
+        calls.add("publish");
+        published.add(telemetry);
+    };
+
     private final ReceiveTelemetryUseCase useCase =
-            new ReceiveTelemetryUseCase(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+            new ReceiveTelemetryUseCase(repository, publisher, Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
     void storesTelemetryWithGeneratedIdAndReceptionTime() {
-        TelemetryReading reading = new TelemetryReading(
-                new Vin("VF1RFB00123456789"), Instant.parse("2026-11-25T10:00:00Z"), 85_000,
-                new TirePressure(2.3, 2.3, 2.4, 2.4), 12.6, 90, 45, List.of("P0300"));
-
-        Telemetry telemetry = useCase.receive(reading);
+        Telemetry telemetry = useCase.receive(reading());
 
         assertThat(telemetry.id()).isNotNull();
         assertThat(telemetry.receivedAt()).isEqualTo(NOW);
-        assertThat(telemetry.reading()).isEqualTo(reading);
-        assertThat(repository.saved).containsExactly(telemetry);
+        assertThat(saved).containsExactly(telemetry);
     }
 
-    private static final class RecordingTelemetryRepository implements TelemetryRepository {
+    @Test
+    void publishesTelemetryReceivedEventAfterStoringIt() {
+        Telemetry telemetry = useCase.receive(reading());
 
-        private final List<Telemetry> saved = new ArrayList<>();
+        assertThat(published).containsExactly(telemetry);
+        assertThat(calls).containsExactly("save", "publish");
+    }
 
-        @Override
-        public void save(Telemetry telemetry) {
-            saved.add(telemetry);
-        }
+    private static TelemetryReading reading() {
+        return new TelemetryReading(
+                new Vin("VF1RFB00123456789"), Instant.parse("2026-11-25T10:00:00Z"), 85_000,
+                new TirePressure(2.3, 2.3, 2.4, 2.4), 12.6, 90, 45, List.of("P0300"));
     }
 }

@@ -1,6 +1,7 @@
 package com.renault.vehiclehealth.telemetry.infrastructure.config;
 
 import com.renault.vehiclehealth.telemetry.application.ReceiveTelemetryUseCase;
+import com.renault.vehiclehealth.telemetry.domain.port.TelemetryEventPublisher;
 import com.renault.vehiclehealth.telemetry.domain.port.TelemetryRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,7 +17,9 @@ public class UseCaseConfiguration {
     }
 
     @Bean
-    ReceiveTelemetryUseCase receiveTelemetryUseCase(TelemetryRepository telemetryRepository, Clock clock) {
-        return new ReceiveTelemetryUseCase(telemetryRepository, clock);
+    ReceiveTelemetryUseCase receiveTelemetryUseCase(TelemetryRepository telemetryRepository,
+                                                    TelemetryEventPublisher telemetryEventPublisher,
+                                                    Clock clock) {
+        return new ReceiveTelemetryUseCase(telemetryRepository, telemetryEventPublisher, clock);
     }
 }
