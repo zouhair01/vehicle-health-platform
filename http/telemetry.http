@@ -1,2 +1,44 @@
 ### Health check telemetry-service
 GET http://localhost:8081/actuator/health
+
+### Send valid telemetry -> expected 202 Accepted
+POST http://localhost:8081/api/v1/telemetry
+Content-Type: application/json
+
+{
+  "vin": "VF1RFB00123456789",
+  "recordedAt": "2026-11-25T10:00:00Z",
+  "mileageKm": 85000,
+  "tirePressure": { "frontLeftBar": 2.3, "frontRightBar": 2.3, "rearLeftBar": 2.4, "rearRightBar": 2.4 },
+  "batteryVoltage": 12.6,
+  "engineTemperatureCelsius": 90,
+  "fuelLevelPercent": 45,
+  "errorCodes": ["P0300"]
+}
+
+### Missing VIN -> expected 400 Bad Request with field errors
+POST http://localhost:8081/api/v1/telemetry
+Content-Type: application/json
+
+{
+  "recordedAt": "2026-11-25T10:00:00Z",
+  "mileageKm": 85000,
+  "tirePressure": { "frontLeftBar": 2.3, "frontRightBar": 2.3, "rearLeftBar": 2.4, "rearRightBar": 2.4 },
+  "batteryVoltage": 12.6,
+  "engineTemperatureCelsius": 90,
+  "fuelLevelPercent": 45
+}
+
+### Invalid VIN format -> expected 400 Bad Request (Invalid telemetry)
+POST http://localhost:8081/api/v1/telemetry
+Content-Type: application/json
+
+{
+  "vin": "INVALID-VIN",
+  "recordedAt": "2026-11-25T10:00:00Z",
+  "mileageKm": 85000,
+  "tirePressure": { "frontLeftBar": 2.3, "frontRightBar": 2.3, "rearLeftBar": 2.4, "rearRightBar": 2.4 },
+  "batteryVoltage": 12.6,
+  "engineTemperatureCelsius": 90,
+  "fuelLevelPercent": 45
+}
