@@ -1,2 +1,20 @@
 ### Health check vehicle-analysis-service
 GET http://localhost:8082/actuator/health
+
+### Latest health report -> expected 200 (send a telemetry first)
+GET http://localhost:8082/api/v1/vehicles/VF1RFB00123456789/health-report
+
+### All alerts of the latest report -> expected 200
+GET http://localhost:8082/api/v1/vehicles/VF1RFB00123456789/alerts
+
+### Critical alerts only -> expected 200
+GET http://localhost:8082/api/v1/vehicles/VF1RFB00123456789/alerts?severity=CRITICAL
+
+### Vehicle without report -> expected 404
+GET http://localhost:8082/api/v1/vehicles/VF1AAA00000000001/health-report
+
+### Invalid VIN -> expected 400
+GET http://localhost:8082/api/v1/vehicles/INVALID-VIN/health-report
+
+### Unknown severity -> expected 400
+GET http://localhost:8082/api/v1/vehicles/VF1RFB00123456789/alerts?severity=UNKNOWN
