@@ -32,4 +32,8 @@ public class AlertEmbeddable {
         embeddable.message = alert.message();
         return embeddable;
     }
+
+    Alert toDomain() {
+        return new Alert(type, severity, message);
+    }
 }

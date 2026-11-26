@@ -101,5 +101,10 @@ class AnalyzeVehicleUseCaseTest {
         public boolean existsByTelemetryId(UUID telemetryId) {
             return saved.stream().anyMatch(report -> report.telemetryId().equals(telemetryId));
         }
+
+        @Override
+        public Optional<HealthReport> findLatestByVin(Vin vin) {
+            return saved.stream().filter(report -> report.vin().equals(vin)).reduce((first, second) -> second);
+        }
     }
 }

@@ -1,7 +1,9 @@
 package com.renault.vehiclehealth.analysis.infrastructure.persistence;
 
+import com.renault.vehiclehealth.analysis.domain.model.HealthAssessment;
 import com.renault.vehiclehealth.analysis.domain.model.HealthReport;
 import com.renault.vehiclehealth.analysis.domain.model.HealthStatus;
+import com.renault.vehiclehealth.analysis.domain.model.Vin;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -69,6 +71,12 @@ public class HealthReportEntity implements Persistable<UUID> {
         entity.status = report.assessment().status();
         entity.alerts = new ArrayList<>(report.assessment().alerts().stream().map(AlertEmbeddable::from).toList());
         return entity;
+    }
+
+    HealthReport toDomain() {
+        HealthAssessment assessment = new HealthAssessment(
+                score, status, alerts.stream().map(AlertEmbeddable::toDomain).toList());
+        return new HealthReport(id, new Vin(vin), telemetryId, telemetryRecordedAt, analyzedAt, assessment);
     }
 
     @Override
