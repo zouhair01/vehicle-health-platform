@@ -13,6 +13,20 @@ services:
       timeout: 3s
       retries: 10
 
+  analysis-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: vehicle_analysis
+      POSTGRES_USER: analysis
+      POSTGRES_PASSWORD: analysis
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analysis -d vehicle_analysis"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   kafka:
     image: apache/kafka:4.1.0
     environment:
@@ -30,6 +44,11 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     ports:
       - "9094:9094"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   recall-provider:
     image: wiremock/wiremock:3.13.1
@@ -39,16 +58,35 @@ services:
     ports:
       - "8089:8080"
 
-  analysis-db:
-    image: postgres:17-alpine
+  telemetry-service:
+    profiles: ["app"]
+    build: ./telemetry-service
+    image: telemetry-service:1.0.0
     environment:
-      POSTGRES_DB: vehicle_analysis
-      POSTGRES_USER: analysis
-      POSTGRES_PASSWORD: analysis
+      TELEMETRY_DB_URL: jdbc:postgresql://telemetry-db:5432/telemetry
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
-      - "5434:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U analysis -d vehicle_analysis"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      - "8081:8081"
+    depends_on:
+      telemetry-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  vehicle-analysis-service:
+    profiles: ["app"]
+    build: ./vehicle-analysis-service
+    image: vehicle-analysis-service:1.0.0
+    environment:
+      ANALYSIS_DB_URL: jdbc:postgresql://analysis-db:5432/vehicle_analysis
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      RECALL_PROVIDER_URL: http://recall-provider:8080
+    ports:
+      - "8082:8082"
+    depends_on:
+      analysis-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      recall-provider:
+        condition: service_started
