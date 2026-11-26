@@ -1,38 +1,63 @@
 # Vehicle Health Analysis Platform
 
-Collects vehicle telemetry, analyzes vehicle condition, computes a health score and raises alerts.
+Collects telemetry from connected vehicles, analyzes their condition, computes a health score
+and raises alerts. Two Spring Boot microservices communicate asynchronously through Kafka.
 
-Work in progress — full documentation will be added as the project evolves.
+## Architecture
+cd "$(git rev-parse --show-toplevel)"
 
-## Health score rules
+cat > README.md <<'EOF'
+# Vehicle Health Analysis Platform
 
-The score starts at **100**. Each rule subtracts a penalty; the final score is bounded to **0**.
-The statement gives no figures, so the thresholds below are documented business assumptions.
+Two Spring Boot microservices that collect vehicle telemetry, compute a health score and raise alerts.
 
-| Rule | Condition | Penalty | Alert |
-|---|---|---|---|
-| Mileage | > 100,000 km | -5 | none |
-| | > 150,000 km | -10 | WARNING |
-| | > 200,000 km | -15 | WARNING |
-| Tire pressure (per tire) | outside [1.9, 3.0] bar | -5 | WARNING |
-| | outside [1.5, 3.5] bar | -10 | CRITICAL |
-| Battery | < 12.2 V | -10 | WARNING |
-| | < 11.8 V | -20 | CRITICAL |
-| Engine temperature | > 105 °C | -10 | WARNING |
-| | > 115 °C | -25 | CRITICAL |
-| Fuel | < 10 % | -5 | WARNING |
-| Error codes | -10 per distinct code | capped at -30 | WARNING per code |
-| Recall campaigns | -15 per open campaign | capped at -30 | CRITICAL per campaign |
+```
+POST /telemetry ──▶ telemetry-service (8081) ──Kafka──▶ vehicle-analysis-service (8082) ──▶ GET health-report / alerts
+                          │                                     │
+                     PostgreSQL                     PostgreSQL + recall API (WireMock)
+```
 
-Health status:
+## Stack
 
-| Score | Status |
-|---|---|
-| >= 80 | `GOOD` |
-| >= 50 | `ATTENTION_REQUIRED` |
-| < 50 | `CRITICAL` |
+Java 21 · Spring Boot 4.2.0 · Maven 3.10.0 (wrapper) · PostgreSQL 17 · Kafka 4.1.0 · WireMock 3.13.1 · Docker
 
-A vehicle with at least one CRITICAL alert can never be `GOOD`: its status is at least `ATTENTION_REQUIRED`.
+## Run
 
-Each rule is an implementation of `HealthRule` (strategy pattern): adding a rule means adding a class,
-without modifying the calculator.
+```bash
+docker compose --profile app up -d --build
+```
+
+Swagger UI: http://localhost:8081/swagger-ui.html and http://localhost:8082/swagger-ui.html
+Ready-to-run requests: `http/*.http`
+
+## API
+
+| Method | Path | Response |
+|---|---|---|
+| POST | `/api/v1/telemetry` | `202` accepted, `400` invalid payload |
+| GET | `/api/v1/vehicles/{vin}/health-report` | `200`, `404` no report |
+| GET | `/api/v1/vehicles/{vin}/alerts?severity=` | `200`, `404` no report |
+
+## Tests
+
+```bash
+cd telemetry-service && ./mvnw verify
+cd vehicle-analysis-service && ./mvnw verify
+```
+
+Unit tests (domain), MockMvc tests (controllers), integration tests (Testcontainers + WireMock).
+The 4 acceptance scenarios are covered by `TelemetryIngestionIntegrationTest` and `VehicleHealthAcceptanceTest`.
+
+## Health score
+
+Starts at 100, each rule subtracts a penalty (assumed thresholds, the statement gives none):
+mileage (-5 to -15), tire pressure (-5/-10 per tire), battery (-10/-20), engine temperature (-10/-25),
+fuel (-5), error codes (-10 each, max -30), open recall campaigns (-15 each, max -30).
+Status: `GOOD` ≥ 80, `ATTENTION_REQUIRED` ≥ 50, `CRITICAL` < 50.
+
+## Choices
+
+- Hexagonal architecture: domain without Spring, one use case per action.
+- Asynchronous analysis via Kafka (key = VIN), idempotent consumer, retries then dead letter topic.
+- One database per service, schema managed by Flyway.
+
